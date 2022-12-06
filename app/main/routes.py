@@ -32,7 +32,7 @@ def index():
         except LangDetectException:
             language = ''
         post = Post(body=form.post.data, author=current_user,
-                    language=language)
+                    language=language, private=form.private.data)
         db.session.add(post)
         db.session.commit()
         flash(_('Your post is now live!'))
@@ -54,7 +54,7 @@ def index():
 @login_required
 def explore():
     page = request.args.get('page', 1, type=int)
-    posts = Post.query.order_by(Post.timestamp.desc()).paginate(
+    posts = Post.query.filter_by(private=False).order_by(Post.timestamp.desc()).paginate(
         page=page, per_page=current_app.config['POSTS_PER_PAGE'],
         error_out=False)
     next_url = url_for('main.explore', page=posts.next_num) \
@@ -71,7 +71,11 @@ def explore():
 def user(username):
     user = User.query.filter_by(username=username).first_or_404()
     page = request.args.get('page', 1, type=int)
-    posts = user.posts.order_by(Post.timestamp.desc()).paginate(
+    posts = user.posts
+    if current_user.username != username:
+        posts = posts.filter_by(private=False)
+     
+    posts = posts.order_by(Post.timestamp.desc()).paginate(
         page=page, per_page=current_app.config['POSTS_PER_PAGE'],
         error_out=False)
     next_url = url_for('main.user', username=user.username,
